@@ -2,12 +2,17 @@
 
 #include "util.hh"
 
+#include <array>
 #include <arpa/inet.h>
 #include <cstring>
 #include <memory>
 #include <netdb.h>
 #include <stdexcept>
 #include <system_error>
+
+#ifdef  __APPLE__
+#include <libkern/OSByteOrder.h>
+#endif
 
 using namespace std;
 
@@ -112,14 +117,22 @@ uint32_t Address::ipv4_numeric() const {
 
     sockaddr_in ipv4_addr{};
     memcpy(&ipv4_addr, &_address.storage, _size);
-
+    #ifdef __APPLE__
+    return OSSwapBigToHostInt32(ipv4_addr.sin_addr.s_addr);
+    #else
     return be32toh(ipv4_addr.sin_addr.s_addr);
+    #endif
 }
 
 Address Address::from_ipv4_numeric(const uint32_t ip_address) {
     sockaddr_in ipv4_addr{};
     ipv4_addr.sin_family = AF_INET;
+    #ifdef __APPLE__
+    ipv4_addr.sin_addr.s_addr = OSSwapHostToBigInt32(ip_address);
+    #else
     ipv4_addr.sin_addr.s_addr = htobe32(ip_address);
+    #endif
+   
 
     return {reinterpret_cast<sockaddr *>(&ipv4_addr), sizeof(ipv4_addr)};
 }
