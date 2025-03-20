@@ -3,8 +3,13 @@
 
 #include "byte_stream.hh"
 
+#include <cstddef>
 #include <cstdint>
+#include <ostream>
 #include <string>
+#include <list>
+#include <utility>
+
 
 //! \brief A class that assembles a series of excerpts from a byte stream (possibly out of order,
 //! possibly overlapping) into an in-order byte stream.
@@ -12,8 +17,24 @@ class StreamReassembler {
   private:
     // Your code here -- add private members as necessary.
 
+    struct StringPair {
+      size_t _start;
+      size_t _end;
+      std::string _data;
+      friend std::ostream& operator<<(std::ostream &out, const StringPair &s) {
+        out << "start: " << s._start << ", end: " << s._end << ", size: " << s._data.size() << "\n";
+        return out;
+      }
+    };
+
     ByteStream _output;  //!< The reassembled in-order byte stream
-    size_t _capacity;    //!< The maximum number of bytes
+    size_t _capacity{0};    //!< The maximum number of bytes
+    size_t _unassembled_bytes{0};
+    size_t _stream_start_idx{0};
+    std::list<StringPair> _queue{};
+    bool _eof{};
+
+    void insert_to_list(const std::string &data, const uint64_t index);
 
   public:
     //! \brief Construct a `StreamReassembler` that will store up to `capacity` bytes.
@@ -30,6 +51,8 @@ class StreamReassembler {
     //! \param index indicates the index (place in sequence) of the first byte in `data`
     //! \param eof the last byte of `data` will be the last byte in the entire stream
     void push_substring(const std::string &data, const uint64_t index, const bool eof);
+
+    
 
     //! \name Access the reassembled byte stream
     //!@{
