@@ -27,6 +27,8 @@ class ByteStream {
     bool _end{};
     bool _error{};  //!< Flag indicating that the stream suffered an error.
 
+    std::string read_from_buffer(size_t len, size_t pos) const;
+
   public:
     //! Construct a stream with room for `capacity` bytes.
     ByteStream(const size_t capacity);

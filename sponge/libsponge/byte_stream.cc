@@ -21,33 +21,23 @@ size_t ByteStream::write(const string &data) {
     if (remaining_capacity() == 0) {
         return 0;
     }
-    size_t can_write = std::min(remaining_capacity(), data.size());
-    size_t first_write_size = _capacity - _write_pos;
-    if (can_write <= first_write_size) {
-        std::copy(data.data(), data.data() + can_write, _data.data() + _write_pos);
-        _write_pos += can_write;
-    } else {
-        std::copy(data.data(), data.data() + first_write_size, _data.data() + _write_pos);
-        size_t remain = can_write - first_write_size;
-        std::copy(data.data() + first_write_size, data.data() + can_write, _data.data());
-        _write_pos = remain;
+    size_t writable_size = std::min(remaining_capacity(), data.size());
+    size_t first_write_size = std::min(writable_size, _capacity - _write_pos);
+    std::copy(data.data(), data.data() + first_write_size, _data.data() + _write_pos);
+    size_t remain = writable_size - first_write_size;
+    if (remain > 0) {
+        std::copy(data.data() + first_write_size, data.data() + writable_size, _data.data());
     }
-    _bytes_written += can_write;
-    _size += can_write;
-    return can_write;
+    _write_pos = (_write_pos + writable_size) % _capacity;
+    _bytes_written += writable_size;
+    _size += writable_size;
+    return writable_size;
 }
 
 //! \param[in] len bytes will be copied from the output side of the buffer
 string ByteStream::peek_output(const size_t len) const {
-    size_t can_read = std::min(len, buffer_size());
-    if (_read_pos + can_read < _capacity) {
-        std::string result(_data.data() + _read_pos, can_read);
-        return result;
-    }
-    std::string result(_data.data() + _read_pos, _capacity - _read_pos);
-    size_t remain = can_read - (_capacity - _read_pos);
-    result += std::string(_data.data(), remain);
-    return result;
+    size_t readable_size = std::min(len, buffer_size());
+    return read_from_buffer(readable_size, _read_pos);
 }
 
 //! \param[in] len bytes will be removed from the output side of the buffer
@@ -59,18 +49,23 @@ void ByteStream::pop_output(const size_t len) {
 //! \param[in] len bytes will be popped and returned
 //! \returns a string
 std::string ByteStream::read(const size_t len) {
-    size_t can_read = std::min(len, buffer_size());
-    _bytes_read += can_read;
-    _size -= can_read;
-    if (_read_pos + can_read < _capacity) {
-        std::string result(_data.data() + _read_pos, can_read);
-        _read_pos += can_read;
-        return result;
+    size_t readable_size = std::min(len, buffer_size());
+    _bytes_read += readable_size;
+    _size -= readable_size;
+    std::string result = read_from_buffer(len, _read_pos);
+    _read_pos = (_read_pos + readable_size) % _capacity;
+    return result;
+}
+
+std::string ByteStream::read_from_buffer(size_t len, size_t pos) const {
+    std::string result;
+    result.reserve(len); // 预留足够的空间，避免多次分配
+    size_t first_read_size = std::min(len, _capacity - pos);
+    result.append(_data.data() + pos, first_read_size);
+    size_t remain = len - first_read_size;
+    if (remain > 0) {
+        result.append(_data.data(), remain);
     }
-    std::string result(_data.data() + _read_pos, _capacity - _read_pos);
-    size_t remain = can_read - (_capacity - _read_pos);
-    result += std::string(_data.data(), remain);
-    _read_pos = remain;
     return result;
 }
 
