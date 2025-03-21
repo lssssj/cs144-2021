@@ -1,5 +1,6 @@
 #include "wrapping_integers.hh"
 
+#include <cassert>
 // Dummy implementation of a 32-bit wrapping integer
 
 // For Lab 2, please replace with a real implementation that passes the
@@ -14,8 +15,11 @@ using namespace std;
 //! \param n The input absolute 64-bit sequence number
 //! \param isn The initial sequence number
 WrappingInt32 wrap(uint64_t n, WrappingInt32 isn) {
-    DUMMY_CODE(n, isn);
-    return WrappingInt32{0};
+    n &= (1ul << 32) - 1;
+    assert(n < (1ul << 32));
+    uint64_t seq = n + static_cast<uint64_t>(isn.raw_value());
+    uint32_t res = seq & ((1ul << 32) - 1);
+    return WrappingInt32{res};
 }
 
 //! Transform a WrappingInt32 into an "absolute" 64-bit sequence number (zero-indexed)
@@ -29,6 +33,34 @@ WrappingInt32 wrap(uint64_t n, WrappingInt32 isn) {
 //! and the other stream runs from the remote TCPSender to the local TCPReceiver and
 //! has a different ISN.
 uint64_t unwrap(WrappingInt32 n, WrappingInt32 isn, uint64_t checkpoint) {
-    DUMMY_CODE(n, isn, checkpoint);
-    return {};
+    if (n == isn) {
+        return checkpoint;
+    }
+    uint64_t seq = 0;
+    if (n.raw_value() > isn.raw_value()) {
+        seq = n.raw_value() - isn.raw_value();
+    } else {
+        seq = n.raw_value() + (1ul << 32) - isn.raw_value(); 
+    }
+    if (checkpoint <= seq) {
+        return seq;
+    }
+    
+    int64_t high32_part = checkpoint >> 32;
+    uint64_t seq1 = (high32_part << 32) + seq;
+    if (seq1 > checkpoint) {
+        assert(ch >= 1);
+        uint64_t seq2 = ((high32_part - 1) << 32) + seq;
+        assert(seq2 <= checkpoint && checkpoint <= seq1);
+        if (checkpoint - seq2 >= seq1 - checkpoint) {
+            return seq1;
+        }
+        return seq2;
+    }
+    uint64_t seq2 = ((high32_part + 1) << 32) + seq;
+    assert(seq1 <= checkpoint && checkpoint <= seq2);
+    if (checkpoint - seq1 >= seq2 - checkpoint) {
+        return seq2;
+    } 
+    return seq1;
 }
