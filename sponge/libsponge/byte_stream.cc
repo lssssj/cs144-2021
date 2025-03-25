@@ -52,7 +52,7 @@ std::string ByteStream::read(const size_t len) {
     size_t readable_size = std::min(len, buffer_size());
     _bytes_read += readable_size;
     _size -= readable_size;
-    std::string result = read_from_buffer(len, _read_pos);
+    std::string result = read_from_buffer(readable_size, _read_pos);
     _read_pos = (_read_pos + readable_size) % _capacity;
     return result;
 }
