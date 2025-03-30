@@ -9,6 +9,10 @@
 #include <unistd.h>
 #include <utility>
 
+#ifdef  __APPLE__
+#include <libkern/OSByteOrder.h>
+#endif
+
 using namespace std;
 
 //! \details This function attempts to parse a TCP segment from
@@ -54,8 +58,13 @@ optional<TCPSegment> TCPOverIPv4Adapter::unwrap_tcp_in_ip(const InternetDatagram
     // should we target this source addr/port (and use its destination addr as our source) in reply?
     if (listening()) {
         if (tcp_seg.header().syn and not tcp_seg.header().rst) {
+            #ifdef  __APPLE__
+            config_mutable().source = {inet_ntoa({OSSwapHostToBigInt32(ip_dgram.header().dst)}), config().source.port()};
+            config_mutable().destination = {inet_ntoa({OSSwapHostToBigInt32(ip_dgram.header().src)}), tcp_seg.header().sport};
+            #else
             config_mutable().source = {inet_ntoa({htobe32(ip_dgram.header().dst)}), config().source.port()};
             config_mutable().destination = {inet_ntoa({htobe32(ip_dgram.header().src)}), tcp_seg.header().sport};
+            #endif
             set_listening(false);
         } else {
             return {};

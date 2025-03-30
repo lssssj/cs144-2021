@@ -40,7 +40,6 @@ class TCPSender {
     ByteStream _stream;
 
     //! retransmission timer for the connection
-    unsigned int _default_initial_retransmission_timeout{0};
 
     //! the (absolute) sequence number for the next byte to be sent
     uint64_t _next_seqno{0};

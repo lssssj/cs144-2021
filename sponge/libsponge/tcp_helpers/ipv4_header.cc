@@ -6,6 +6,10 @@
 #include <iomanip>
 #include <sstream>
 
+#ifdef  __APPLE__
+#include <libkern/OSByteOrder.h>
+#endif
+
 using namespace std;
 
 //! \param[in,out] p is a NetParser from which the IP fields will be extracted
@@ -152,8 +156,14 @@ std::string IPv4Header::summary() const {
     stringstream ss{};
     ss << hex << boolalpha << "IPv" << +ver << ", "
        << "len=" << +len << ", "
-       << "protocol=" << +proto << ", " << (ttl >= 10 ? "" : "ttl=" + ::to_string(ttl) + ", ")
-       << "src=" << inet_ntoa({htobe32(src)}) << ", "
+       << "protocol=" << +proto << ", " << (ttl >= 10 ? "" : "ttl=" + ::to_string(ttl) + ", ");
+
+       #ifdef  __APPLE__
+       ss << "src=" << inet_ntoa({OSSwapHostToBigInt32(src)}) << ", "
+          << "dst=" << inet_ntoa({OSSwapHostToBigInt32(src)});
+       #else
+       ss << "src=" << inet_ntoa({htobe32(src)}) << ", "
        << "dst=" << inet_ntoa({htobe32(dst)});
+       #endif
     return ss.str();
 }
